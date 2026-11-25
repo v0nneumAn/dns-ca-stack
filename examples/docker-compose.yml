@@ -1,0 +1,64 @@
+services:
+  doh-proxy:
+    image: python:3-alpine
+    container_name: doh-proxy
+    restart: unless-stopped
+    networks:
+      - pihole-net
+    volumes:
+      - ../scripts/doh_proxy.py:/doh_proxy.py:ro
+    command: python3 /doh_proxy.py
+    extra_hosts:
+      - 'cloudflare-dns.com:1.1.1.1'
+    tmpfs:
+      - /tmp:noexec,nosuid,size=50m
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  pihole:
+    image: pihole/pihole:latest
+    container_name: pihole
+    restart: unless-stopped
+    depends_on:
+      - doh-proxy
+    environment:
+      TZ: ${TZ:-Australia/Sydney}
+      WEBPASSWORD: ${PIHOLE_PASSWORD:?Set PIHOLE_PASSWORD in your private .env file}
+      DNSMASQ_USER: root
+      FTLCONF_dns_listeningMode: 'ALL'
+      FTLCONF_dns_upstreams: 'doh-proxy#5053'
+      FTLCONF_dns_dnssec: 'true'
+      FTLCONF_dns_domain_needed: 'true'
+      FTLCONF_dns_local_ttl: '60'
+      FTLCONF_dns_expand_hosts: 'true'
+      FTLCONF_dns_domain: 'lan.example'
+      FTLCONF_dns_host_record: 'pihole.lan.example,192.0.2.10'
+      FTLCONF_misc_etc_dnsmasq_d: 'true'
+    networks:
+      - pihole-net
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+      - "80:80/tcp"
+      - "443:443/tcp"
+    volumes:
+      - pihole-data:/etc/pihole
+      - ./pihole-dnsmasq:/etc/dnsmasq.d
+      - ./pihole-certs/tls.pem:/etc/pihole/tls.pem:ro
+    tmpfs:
+      - /tmp:noexec,nosuid,size=100m
+      - /run:noexec,nosuid,size=10m
+      - /var/run:noexec,nosuid,size=10m
+      - /var/log/pihole:noexec,nosuid,size=50m
+    security_opt:
+      - no-new-privileges:true
+
+networks:
+  pihole-net:
+    driver: bridge
+
+volumes:
+  pihole-data:

@@ -1,0 +1,21 @@
+# Python caches
+__pycache__/
+*.py[cod]
+
+# Environment and credentials
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.crt
+*.cer
+*.p12
+*.pfx
+
+# Local verification artifacts
+.verification/
+.tmp/
+
+# OS
+.DS_Store
